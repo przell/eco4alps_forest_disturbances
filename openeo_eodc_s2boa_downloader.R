@@ -122,7 +122,9 @@ area_ts = read_ncdf("eodc_s2.nc") # , var = "DOY") # but bandname here if you wa
 # hopefully na is represented logically correct
 # area_ts$DOY[area_ts$DOY < -1] = NA # assign the NA value manually
 area_ts = read_ncdf("/home/pzellner@eurac.edu/s2_eodc_force_timeseries.nc")
+system("gdalinfo /home/pzellner@eurac.edu/s2_eodc_force_timeseries.nc")
 plot(area_ts %>% slice("time", 24))
+st_crs(area_ts) = st_crs(9001) # assign projection manually
 
 #' plot interactively
 mapview(st_bbox(area_ts))
