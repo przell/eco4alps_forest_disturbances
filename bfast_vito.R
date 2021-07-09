@@ -8,7 +8,7 @@ library("bfast")
 library("dplyr")
 library("mapview")
 library("ggplot2")
-
+library("plotly")
 
 # load reference regions -------------------------------------------------------
 # area welschenofen from vaia storm
@@ -116,7 +116,10 @@ plot_ts = ggplot(ndvi_ts_df, aes(x = dates, y = value)) +
 plot_ts_plotly = plotly::ggplotly(plot_ts)
 plot_ts_plotly
 
+# cloud contaminated
+# whats the time step?
 
+# get full history!
 
 
 
