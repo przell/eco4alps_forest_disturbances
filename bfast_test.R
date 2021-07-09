@@ -8,7 +8,7 @@
 
 # s1 collections to use 
 # openEO -> Eurac Backend -> S2_L2A_T32TPS (Sen2Cor) + S2_Cloudless_Alps (Cloud Mask von Mattia; Sen2Cloudless) / oder Scene Classification
-# openEO -> EODC Backend -> S2 L2A -> openEO platform UC6 Preprocessed?
+# openEO -> EODC Backend -> s2_boa -> openEO platform UC6 Preprocessed?
 
 # libs
 library("sf")
@@ -16,7 +16,6 @@ library("stars")
 library("pbapply")
 library("bfast")
 library("dplyr")
-
 library("mapview")
 
 

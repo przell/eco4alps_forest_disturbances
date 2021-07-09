@@ -3,20 +3,21 @@
 # libs ----
 #library(remotes)
 #remotes::install_github(repo="Open-EO/openeo-r-client",ref="develop", dependencies=TRUE)
+
 packageVersion("openeo") # dev version needed
 library(openeo)
 library(stars)
 library(sf)
 library(mapview)
+library(dplyr)
+
 # library(mapedit)
 # library(ggplot2)
 # library(plotly)
 # library(jsonlite)
-library(dplyr)
 
 # login ------------------------------------------------------------------------
-host = "https://openeo.eodc.eu/v1.0"
-host = "https://openeo.eodc.eu/" # 
+host = "https://openeo.eodc.eu/"
 user = "openeo-user"
 password = "openeo-56XA!"
 
@@ -61,17 +62,30 @@ bbox = list(west = bbox[[1]],
             south = bbox[[2]],
             north = bbox[[4]])
 
-# jenesien
-# bbox = list(west = 11.25841,
-#             east = 11.33892,
-#             south = 46.54007,
-#             north = 46.58447)
+# mazia valley
+bbox = list(west = 10.53726,
+            east = 10.72746,
+            south = 46.66205,
+            north = 46.74925)
+
+# east of brunico
+bbox = list(west = 11.99707,
+            east = 12.48047,
+            south = 46.64338,
+            north = 46.86753)
+
+# a point around brunico
+bbox = list(west = 11.99618,
+            east = 11.99619,
+            south = 46.78365,
+            north = 46.78366)
+
 
 # define the time range
-time_range = list("2018-01-01T00:00:00.000Z", 
-                  "2018-12-31T00:00:00.000Z")
-time_range = list("2018-01-01", 
-                  "2018-12-31")
+time_range = list("2020-01-01T00:00:00.000Z", 
+                  "2020-12-28T00:00:00.000Z")
+time_range = list("2020-04-01", 
+                  "2020-04-15")
 
 # define the bands
 sel_bands = list("band_4", "band_8")
@@ -90,8 +104,10 @@ data = p$load_collection(id = collection,
 result = p$save_result(data = data, format = "netCDF")
 
 # print process graph as JSON
-graph = as(result, "Graph")
-graph
+graph_info = create_user_process(result, id = "test", submit = FALSE)
+print(jsonlite::toJSON(graph_info, pretty = TRUE, auto_unbox = TRUE))
+
+
 
 
 # get result -------------------------------------------------------------------
@@ -107,7 +123,8 @@ compute_result(result,
 job_id = create_job(graph = result,
                     title = "eodc_s2",
                     description = "eodc_s2",
-                    format = "netCDF")
+                    format = "netCDF", 
+                    con = con)
 start_job(job = job_id)
 list_jobs(con = eurac)
 result_obj = list_results(job = job_id)
