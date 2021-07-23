@@ -53,7 +53,7 @@ mapview(area_px) + mapview(area)
 area_px = st_transform(area_px, crs = 4326)
 
 
-px2bbox = function(x){
+px2bbox = function(x){pb
   bbox = st_bbox(x)
   bbox = list(west = bbox[[1]],
               east = bbox[[3]],
@@ -85,6 +85,10 @@ collection = "SAO_S2_ST_BRDF_10m_L2A"
 collection_mask = "s2cloudless_alps"
 collection_viewer(collection)
 
+# adapt time range to mask
+# is mask on same days?
+# is mask on same grid?
+# check on normal files maybe first?
 time_range = list("2015-07-04 00:00:00.000", 
                   "2021-01-21 00:00:00.000")
 bands = c("B04", "B08", "CLM", "B09", "B8A", "B11",
