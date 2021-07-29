@@ -45,7 +45,7 @@ mapview(area)
 area_px = st_point_on_surface(area)
 
 # add some buffer to avoid point error in openeo
-buff_size = 1
+buff_size = 20
 area_px = st_buffer(area_px, buff_size, endCapStyle = "SQUARE")
 mapview(area_px) + mapview(area)
 
@@ -86,18 +86,19 @@ con = openeo::connect(host = host,
 
 
 # metadata ----
-extent_viewer = function(collection){
+extent_viewer = function(collection, ...){
   extent = openeo::describe_collection(collection)$extent$spatial
   extent = sf::st_bbox(obj = c(xmin = extent[1], 
                                xmax = extent[3], 
                                ymax = extent[4], 
                                ymin = extent[2]), 
                        crs = sf::st_crs(4326))
-  mapview::mapview(extent)
+  mapview::mapview(extent, ...)
 }
 
-extent_viewer("boa_sentinel_2") + mapview(area)
-
+extent_viewer("boa_sentinel_2") +
+  extent_viewer("boa_landsat_8", col.regions = "yellow") +
+  extent_viewer("gamma0_sentinel_1_dv", col.regions = "green")
 
 collection = "boa_sentinel_2"
 collection_viewer(collection)

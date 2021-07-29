@@ -75,8 +75,8 @@ collection = "SENTINEL2_L1C_SENTINELHUB"
 collection_viewer(collection)
 describe_collection(collection)
 
-time_range = list("2017-01-01T00:00:00.000Z", 
-                  "2018-12-31T00:00:00.000Z")
+time_range = list("2016-01-01T00:00:00.000Z", 
+                  "2020-12-31T00:00:00.000Z")
 bands = c("B04", "B08", "CLM", "B09", "B8A", "B11",
           "sunAzimuthAngles", "sunZenithAngles", "viewAzimuthMean", "viewZenithMean")
 bands = c("CLM")
@@ -122,7 +122,7 @@ cld_mask <- p$reduce_dimension(data = cld_band, reducer = filter_function, dimen
 ndvi_masked <- p$mask(ndvi_calc, cld_mask)
 
 
-result = p$save_result(data = ndvi_calc, format="NetCDF")
+result = p$save_result(data = data, format="NetCDF")
 
 graph_info = create_user_process(result, id = "test", submit = FALSE)
 print(jsonlite::toJSON(graph_info, pretty = TRUE, auto_unbox = TRUE))

@@ -1,4 +1,4 @@
-# bfast on eurac
+# bfast on eurac - modis
 
 # libs -------------------------------------------------------------------------
 library("openeo")
@@ -45,9 +45,9 @@ mapview(area)
 area_px = st_point_on_surface(area)
 
 # add some buffer to avoid point error in openeo
-buff_size = 10
-area_px = st_buffer(area_px, buff_size, endCapStyle = "SQUARE")
-mapview(area_px) + mapview(area)
+# buff_size = 10
+# area_px = st_buffer(area_px, buff_size, endCapStyle = "SQUARE")
+# mapview(area_px) + mapview(area)
 
 # to lat/lon
 area_px = st_transform(area_px, crs = 4326)
@@ -80,10 +80,10 @@ login(login_type = "oidc",
 
 
 # get S2 NDVI ---------------------------------------------------------------
-collection = "SAO_S2_ST_BRDF_10m_L2A"
+collection = "ADO_NDVI_MODIS_231m_3035"
 time_range = list("2016-01-01T00:00:00Z", 
                   "2020-01-01T00:00:00Z")
-bands = c("B04", "B08")
+bands = c("DOY", "NDVI")
 bbox = area_px_openeo[[1]]
 
 p = processes()
@@ -92,19 +92,10 @@ data = p$load_collection(id = collection,
                          temporal_extent = time_range, 
                          bands = bands)
 
-ndvi_calc = p$reduce_dimension(data = data, 
-                               dimension = "bands", 
-                               reducer = function(data, context) {
-                                 red = data[1]
-                                 nir = data[2]
-                                 ndvi = (nir-red)/(nir+red)
-                                 return(ndvi)
-                               })
-
 result = p$save_result(data = ndvi_calc, format="netCDF")
 
-graph_info = create_user_process(result, id = "test", submit = FALSE)
-print(jsonlite::toJSON(graph_info, pretty = TRUE, auto_unbox = TRUE))
+# graph_info = create_user_process(result, id = "test", submit = FALSE)
+# print(jsonlite::toJSON(graph_info, pretty = TRUE, auto_unbox = TRUE))
 
 out_name =  paste0("./openeo_tmp/", collection, ".nc")
 
