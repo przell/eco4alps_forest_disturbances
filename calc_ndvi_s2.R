@@ -36,12 +36,12 @@ sum(duplicated(list_fmask$date))
 # s2 list ----------------------------------------------------------------------
 # make file list
 fls_s2 = list.files("/mnt/CEPH_PRODUCTS/EURAC_L2A/SENTINEL2/alps/T32TPS", 
-                    pattern = "B02_10m.jp2", 
+                    pattern = "B04_10m.jp2", 
                     recursive = T, 
                     full.names = TRUE)
 list_s2 = tibble(pth_base = sub("GRANULE.*", "", fls_s2)  , 
-                 pth_b02 = fls_s2, 
-                 pth_b04 = stringr::str_replace(string = fls_s2, pattern = "_B02_10m", replacement = "_B04_10m"))
+                 pth_b04 = fls_s2, 
+                 pth_b08 = stringr::str_replace(string = fls_s2, pattern = "_B04_10m", replacement = "_B08_10m"))
 list_s2 = list_s2 %>% 
   mutate(safe_name = basename(pth_base),
          sensor = substr(x = basename(pth_base), start = 1, stop = 3), 
@@ -103,7 +103,7 @@ fls_ndvi = parLapply(cl = cl, X = purrr::transpose(list_s2_fmask), fun = functio
   message(Sys.time(), " | processing ndvi | ", basename(name_out))
   
   # calc ndvi
-  s2 = read_stars(c(x$pth_b02, x$pth_b04), along = "bands", proxy = TRUE)
+  s2 = read_stars(c(x$pth_b04, x$pth_b08), along = "bands", proxy = TRUE)
   s2 = s2[aoi]
   s2 = st_apply(X = s2, MARGIN = c("x", "y"), FUN = calc_ndvi)
   
@@ -173,8 +173,8 @@ list_ndvi_merged = lapply(X = purrr::transpose(list_ndvi_fmask), FUN = function(
   
   
   merge_file = gdal_merge(file_1 = x$pth_ndvi, 
-             file_2 = x$pth_fmask, 
-             file_out = tmp_file)
+                          file_2 = x$pth_fmask, 
+                          file_out = tmp_file)
   
   warp_file = gdal_warp(file_in = merge_file, file_out = file_out)
   
