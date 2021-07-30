@@ -78,14 +78,22 @@ ndvi_msk = ndvi %>% slice("band", 1)
 ndvi_msk = ndvi_msk * fmask
 #plot(ndvi_msk %>% slice("t", 200))
 
+# ndvi msk has the correct values
+# look what happens with them from here!
+
+
 # get mean ndvi for windthrow poly in 2017-2019
 ndvi_msk_cut = ndvi_msk[area[1, ]]
 ndvi_msk_cut[[1]][ndvi_msk_cut[[1]] <= 0] = NA
-ndvi_msk_cut = st_apply(ndvi_msk_cut, c("t"), median, na.rm = TRUE)
+ndvi_msk_cut = st_apply(ndvi_msk_cut, c("t"), median, na.rm = TRUE) # 
 ndvi_ts = tibble(ndvi = ndvi_msk_cut %>% pull() %>% c(), 
                  date = st_get_dimension_values(ndvi_msk_cut, "t"))
 
-ggplot(ndvi_ts %>% filter(lubridate::year(date) == 2018), aes(x=date, y=ndvi)) +
+ggplot(ndvi_ts %>% filter(lubridate::year(date) == 2019), aes(x=date, y=ndvi)) +
+  geom_line() +
+  geom_point()
+
+ggplot(ndvi_ts, aes(x=date, y=ndvi)) +
   geom_line() +
   geom_point()
 
@@ -93,51 +101,54 @@ ndvi_dates = st_get_dimension_values(ndvi, "t")
 diff.Date(ndvi_dates)
 
 pixels = ndvi[st_point_on_surface(area[1, ])] %>% pull() %>% c()
-lsts <- bfastts(pixels, ndvi_dates, type = c("irregular"))
-lsts_lin = round(na.approx(lsts), 4)
-lsts_per = round(na.interp(lsts), 4) # bfast monitor not needed!!!!!
+summary(pixels) # where does 255 come from
+pixels[pixels > 1] = NA
+pixels[pixels < 0] = NA
+
+lsts <- bfastts(pixels, ndvi_dates, type = c("irregular")) # what is this doing is it changing, adding values? compare values to input values!
+
+# lsts_lin = round(na.approx(lsts), 4)
+# lsts_per = round(na.interp(lsts), 4) # bfast monitor not needed!!!!!
 
 
-aggregate.daily.to.weekly <- function(daily.ts) {
-  
-  dates      <- as.Date(date_decimal(as.numeric(time(daily.ts))))
-  
-  xts.daily  <- xts(daily.ts, order.by = dates)
-  
-  xts.weekly <- round(xts::apply.weekly(xts.daily, median),4)  # xts
-  
-  start(xts.weekly)
-  ts.weekly <- ts(data = xts.weekly, 
-                  # define the start and end (Year, Week)    
-                  start = c(as.numeric(format(start(xts.weekly), "%Y")),
-                            as.numeric(format(start(xts.weekly), "%W"))), 
-                  end   = c(as.numeric(format(end(xts.weekly), "%Y")), 
-                            as.numeric(format(end(xts.weekly), "%W"))), 
-                  frequency = 52)
-  
-  return(ts.weekly)
-}
-lsts_week = aggregate.daily.to.weekly(lsts_per)
+# aggregate.daily.to.weekly <- function(daily.ts) {
+#   
+#   dates      <- as.Date(date_decimal(as.numeric(time(daily.ts))))
+#   
+#   xts.daily  <- xts(daily.ts, order.by = dates)
+#   
+#   xts.weekly <- round(xts::apply.weekly(xts.daily, median),4)  # xts
+#   
+#   start(xts.weekly)
+#   ts.weekly <- ts(data = xts.weekly, 
+#                   # define the start and end (Year, Week)    
+#                   start = c(as.numeric(format(start(xts.weekly), "%Y")),
+#                             as.numeric(format(start(xts.weekly), "%W"))), 
+#                   end   = c(as.numeric(format(end(xts.weekly), "%Y")), 
+#                             as.numeric(format(end(xts.weekly), "%W"))), 
+#                   frequency = 52)
+#   
+#   return(ts.weekly)
+# }
+# lsts_week = aggregate.daily.to.weekly(lsts_per)
 
 plot(lsts)
 plot(lsts_lin)
 plot(lsts_per)
 plot(lsts_week)
 
-# clouds
+
 bfm_res = bfastmonitor(lsts, 2018, 
-                       formula = response~trend+harmon,# response~season #response~trend, # response~trend+harmon, response~harmon
+                       formula = response~harmon,# response~season #response~trend, # response~trend+harmon, response~harmon
                        order = 1, 
                        history = "all", #date could be specified e.g one year, all = history without breaks, don't have disturbance in history
                        verbose = T)
 # harmon order = 3, reducing will lead to less seasonality = waves per year -> for forrest maybe 2 or 1
 # season sbins = 3, num of seasonal dummies -> 4 
 
-plot(bfm_res)
+plot(bfm_res) # where do all these 1 and 0 come from?
 
-bf_res <- bfast(lsts_week, h = 10/length(lsts_per), 
-                season = "harmonic", breaks = 1, max.iter = 2)
-plot(bf_res)
+
 
 SpatialBFM = function(pixels)
 {
@@ -152,19 +163,16 @@ SpatialBFM = function(pixels)
                verbose = T)$breakpoint
 }
 
-# fmask
-# blueband outliers
 
-st_apply(ndvi_act[area[1, ]], c("x", "y"), function(x){length(x)}, PROGRESS=TRUE)
-StarsResult = st_apply(ndvi_act[area[1, ]], c("x", "y"), SpatialBFM, PROGRESS=TRUE)
+st_apply(ndvi_msk[area[1, ]], c("x", "y"), function(x){length(!is.na(x))}, PROGRESS=TRUE)
+StarsResult = st_apply(ndvi_msk[area[1, ]], c("x", "y"), SpatialBFM, PROGRESS=TRUE)
 
 
 
-StarsResult = st_apply(ndvi_act, c("x", "y"), function(x){
-  lsts = bfastts(pixels, )
-})
 
-
+bf_res <- bfast(lsts_week, h = 10/length(lsts_per), 
+                season = "harmonic", breaks = 1, max.iter = 2)
+plot(bf_res)
 
 # forest -----------------------------------------------------------------------
 pth_forest = "/mnt/CEPH_PROJECTS/ECO4Alps/Land_Cover/Land_cover_data/HR_Layer/FTY_2018_010m_32632.tif"
