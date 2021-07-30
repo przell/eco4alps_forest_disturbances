@@ -13,8 +13,11 @@ library(lubridate)
 library(xts)
 library(zoo)
 library(forecast)
+library(ggplot2)
 
 # storms -----------------------------------------------------------------------
+
+# large storm archive ----
 # # this shapefile is invalid, can't be used with sf
 # # has attributes
 # pth_wind = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/01_data/01_reference_data/9555008/FORWIND_v2.shp"
@@ -29,6 +32,7 @@ library(forecast)
 # wind = wind %>% select(id = Id_poly, event_date = EventDate, 
 #                        storm_name = StormName, area = Area, damage_degree = Damage_deg)
 # wind = wind %>% mutate(event_date = gsub(pattern = "/", replacement = "-", x = event_date))
+# ----
 
 # couple of windthrow areas welschenofen
 pth_area = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/01_data/01_reference_data/area_32632.shp"
@@ -36,30 +40,59 @@ area = st_read(pth_area)
 mapview(st_bbox(area))
 area_bbox = st_bbox(area)
 
-# s2 ---------------------------------------------------------------------------
-path_ndvi = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/01_data/02_s2_ndvi_local_eurac"
+# s2 ndvi masked with fmask ----------------------------------------------------
+
+# file list
+path_ndvi = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/01_data/02_s2_ndvi_local_eurac/ndvi_novalevante_fmask"
 fls_ndvi = list.files(path_ndvi, full.names = TRUE)
 fls_ndvi = tibble(pth = fls_ndvi, 
                   date = as.Date(substr(basename(fls_ndvi), 1, 8), format = "%Y%m%d"), 
-                  sensor = substr(basename(fls_ndvi), 10, 12))
+                  sensor = substr(basename(fls_ndvi), 15, 17))
 
 fls_ndvi_in = fls_ndvi %>% dplyr::filter(lubridate::year(date) >= 2016)
 
-ndvi = read_stars(fls_ndvi_in$pth, proxy = TRUE, along = "t")
-ndvi = stars::st_set_dimensions(.x = ndvi, which = "t", 
-                                values = fls_ndvi_in$date)
+# read as proxy
+ndvi_prox = read_stars(fls_ndvi_in$pth, proxy = TRUE, along = "t")
+ndvi_prox = stars::st_set_dimensions(.x = ndvi_prox, which = "t", 
+                                     values = fls_ndvi_in$date)
+
 # st_dimensions(ndvi)
 # st_get_dimension_values(ndvi, "t")
 
-ndvi = ndvi[area[1, ]]
+# subset spatially
+# THIS IS WHERE TO LOOP THROUGH AREA
+ndvi_prox = ndvi_prox[st_bbox(area[1, ])]
 
-ndvi_act = st_as_stars(ndvi)
-mapview(st_bbox(ndvi_act)) + mapview(area[1, ])
+# read to r
+ndvi = st_as_stars(ndvi_prox)
+mapview(st_bbox(ndvi)) + mapview(area[1, ])
+
+# create mask
+fmask = ndvi %>% slice("band", 2)
+fmask[[1]][fmask[[1]] > 0] = NA # set 1-4 to NA (clouds, snow etc.)
+fmask = fmask + 1 # set 0 to 1 so that 1 is validdata
+
+# apply mask
+ndvi_msk = ndvi %>% slice("band", 1)
+#plot(ndvi_msk %>% slice("t", 200))
+ndvi_msk = ndvi_msk * fmask
+#plot(ndvi_msk %>% slice("t", 200))
+
+# get mean ndvi for windthrow poly in 2017-2019
+ndvi_msk_cut = ndvi_msk[area[1, ]]
+ndvi_msk_cut[[1]][ndvi_msk_cut[[1]] <= 0] = NA
+ndvi_msk_cut = st_apply(ndvi_msk_cut, c("t"), median, na.rm = TRUE)
+ndvi_ts = tibble(ndvi = ndvi_msk_cut %>% pull() %>% c(), 
+                 date = st_get_dimension_values(ndvi_msk_cut, "t"))
+
+ggplot(ndvi_ts %>% filter(lubridate::year(date) == 2018), aes(x=date, y=ndvi)) +
+  geom_line() +
+  geom_point()
 
 ndvi_dates = st_get_dimension_values(ndvi, "t")
 diff.Date(ndvi_dates)
 
-pixels = ndvi_act[st_point_on_surface(area[1, ])] %>% pull() %>% c()
+pixels = ndvi[st_point_on_surface(area[1, ])] %>% pull() %>% c()
 lsts <- bfastts(pixels, ndvi_dates, type = c("irregular"))
 lsts_lin = round(na.approx(lsts), 4)
 lsts_per = round(na.interp(lsts), 4) # bfast monitor not needed!!!!!
@@ -84,15 +117,15 @@ aggregate.daily.to.weekly <- function(daily.ts) {
   
   return(ts.weekly)
 }
-
 lsts_week = aggregate.daily.to.weekly(lsts_per)
 
+plot(lsts)
 plot(lsts_lin)
 plot(lsts_per)
 plot(lsts_week)
 
 # clouds
-bfm_res = bfastmonitor(lsts_per, 2018, 
+bfm_res = bfastmonitor(lsts, 2018, 
                        formula = response~trend+harmon,# response~season #response~trend, # response~trend+harmon, response~harmon
                        order = 1, 
                        history = "all", #date could be specified e.g one year, all = history without breaks, don't have disturbance in history
