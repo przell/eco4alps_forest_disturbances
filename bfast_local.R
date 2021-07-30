@@ -149,11 +149,12 @@ bfm_res = bfastmonitor(lsts, 2018,
 plot(bfm_res) # where do all these 1 and 0 come from?
 
 
+# IMPROVE ERROR HANDLING, CHECK LENGHT OF NON NA AND WRITE TO FILE
 
 SpatialBFM = function(pixels)
 {
   #lsts = ts(pixels, c(2016, 1), frequency=30.666667)
-  lsts = bfastts(pixels, ndvi_dates, type = c("irregular"))
+  lsts = bfastts(pixels, ndvi_dates, type = c("irregular")) # check how this looks then
   #lsts = round(na.approx(lsts), 4)
   print(length(lsts))
   if (length(lsts) < 50){
@@ -164,7 +165,8 @@ SpatialBFM = function(pixels)
 }
 
 
-st_apply(ndvi_msk[area[1, ]], c("x", "y"), function(x){length(!is.na(x))}, PROGRESS=TRUE)
+valid_obs = st_apply(ndvi_msk[area[1, ]], c("x", "y"), function(x){length(!is.na(x))}, PROGRESS=TRUE)
+
 StarsResult = st_apply(ndvi_msk[area[1, ]], c("x", "y"), SpatialBFM, PROGRESS=TRUE)
 
 
