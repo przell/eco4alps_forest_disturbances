@@ -1,4 +1,4 @@
-# download mod11a1 2000 - 2020 via appears
+# download HLSS30v015 via appears
 
 # resources ----
 # API Documentation
@@ -38,10 +38,9 @@ prettify(token_response)                                       # Print the prett
 
 # define your aoi as geojson --------------------------------------------------
 # get the bbox of the grid defined here: 00_define_grid.R
-pth_refgrid = "/mnt/CEPH_PROJECTS/ADO/VHI/01_input_data/target_grid/eusalp_laea_231m.tif"
-refgrid = read_stars(pth_refgrid)
-refgrid = st_transform(refgrid, crs = st_crs(4326))
-aoi = st_as_sf(st_as_sfc(st_bbox(refgrid)))
+pth_area = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/01_data/01_reference_data/area_32632.shp"
+area = st_read(pth_area) %>% st_transform(crs = st_crs(4326))
+aoi = st_as_sf(st_as_sfc(st_bbox(area)))
 
 aoi <- geojsonsf::sf_geojson(aoi, simplify = FALSE) # to geojson
 # prettify(aoi)
@@ -57,21 +56,21 @@ aoi$features[[1]]$geometry$coordinates <- list(aoi$features[[1]]$geometry$coordi
 
 # task description ----
 task_type = "area"
-task_name = "mod11a1_lst_eusalp_2000_2010" # param
+task_name = "hls_novalevante_2016_2020" # param
 task_desc = list(task_type = task_type, 
                  task_name = task_name)
 
 # parameter dates ----
-start_date = "01-01-2000" # param
-end_date = "31-12-2010" # param
+start_date = "01-01-2016" # param
+end_date = "31-12-2020" # param
 dates = data.frame(startDate = start_date, 
                    endDate = end_date
 )
 task_dates = list(dates = dates)
 
 # parameter layers ----
-layers <- c("LST_Day_1km", "QC_Day")     
-prods <- c("MOD11A1.006", "MOD11A1.006") 
+layers <- c("band4", "band8", "fmask")     
+prods <- c("HLSS30v015", "HLSS30v015", "HLSS30v015") 
 layers = data.frame(product = prods, layer = layers)
 task_layers = list(layers = layers)
 
@@ -96,7 +95,7 @@ task_json <- jsonlite::toJSON(task, auto_unbox = TRUE, digits = 10)
 prettify(task_json)
 
 # outdir ------------------------------------------------------------------------
-out_dir = file.path("/mnt/CEPH_PROJECTS/ADO/VHI/01_input_data/MOD11A1/")
+out_dir = file.path("/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/01_data/03_hlss30v015")
 
 # ---------------------------------------------------------------------------- #
 # Submit task ----
