@@ -71,7 +71,10 @@ forest[[1]][forest[[1]] == 2] = 1
 # use this for masking
 
 
-# s2 ndvi masked with fmask and forest hrl -------------------------------------
+# put reading ndvi_eurac into function with spatial subset
+# put reading ndvi_hls into function with spatial subset
+
+# s2 ndvi eurac ----------------------------------------------------------------
 # file list ndvi fmask
 path_ndvi = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/01_data/02_s2_ndvi_local_eurac/ndvi_novalevante_fmask"
 fls_ndvi = list.files(path_ndvi, full.names = TRUE)
@@ -88,8 +91,6 @@ ndvi_prox = stars::st_set_dimensions(.x = ndvi_prox, which = "t",
 
 # st_dimensions(ndvi)
 # st_get_dimension_values(ndvi, "t")
-
-
 
 # subset spatially
 # THIS IS WHERE TO LOOP THROUGH AREA
@@ -113,6 +114,12 @@ ndvi_msk = ndvi %>% slice("band", 1)
 #plot(ndvi_msk %>% slice("t", 200))
 ndvi_msk = ndvi_msk * fmask
 #plot(ndvi_msk %>% slice("t", 200))
+
+
+
+
+
+
 
 # ndvi msk has the correct values
 ndvi_msk_valpx = st_apply(ndvi_msk, c("x","y"), function(x){
