@@ -23,11 +23,11 @@ stt = st_transform(stt, crs = 32632)
 
 
 # large storm archive ----
-# # this shapefile is invalid, can't be used with sf
-# # has attributes
+# this shapefile is invalid, can't be used with sf
+# has attributes
 # pth_wind = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/01_data/01_reference_data/9555008/FORWIND_v2.shp"
 # wind = st_read(pth_wind)
-# # wind = wind %>% dplyr::filter(StormName == "Vaia")
+# wind = wind %>% dplyr::filter(StormName == "Vaia")
 # wind = wind %>% dplyr::filter(Country == "IT")
 # 
 # wind = st_transform(wind, crs = 32632)
@@ -45,14 +45,15 @@ stt = st_transform(stt, crs = 32632)
 # ----
 
 # couple of windthrow areas welschenofen
+# event date 2018-10-28
 pth_area = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/01_data/01_reference_data/area_32632.shp"
 area = st_read(pth_area)
 area_bbox = st_bbox(area)
 
-# no disturbance manually
-library(mapedit)
-no_dist = mapedit::drawFeatures()
-no_dist = no_dist %>% st_transform(st_crs(area))
+# # no disturbance manually
+# library(mapedit)
+# no_dist = mapedit::drawFeatures()
+# no_dist = no_dist %>% st_transform(st_crs(area))
 
 mapview(st_bbox(area)) + mapview(area) + mapview(st_bbox(stt)) + mapview(no_dist, col.reg = "red")
 
@@ -90,12 +91,10 @@ ndvi_prox = stars::st_set_dimensions(.x = ndvi_prox, which = "t",
 
 
 
-
-
 # subset spatially
 # THIS IS WHERE TO LOOP THROUGH AREA
-aoi = area[1, ]
-aoi = no_dist
+aoi = area[127, ]
+#aoi = no_dist
 aoi_bbox = st_bbox(aoi)
 
 ndvi_prox = ndvi_prox[aoi_bbox]
@@ -134,7 +133,9 @@ ggplot(ndvi_ts %>% filter(lubridate::year(date) == 2020), aes(x=date, y=ndvi)) +
 
 ggplot(ndvi_ts, aes(x=date, y=ndvi)) +
   geom_line() +
-  geom_point()
+  geom_point()  + 
+  geom_vline(xintercept = as.Date("2018-10-28"), col = "red")
+
 
 
 # bfast on one pixel
@@ -149,7 +150,7 @@ plot(lsts)
 
 # lsts_lin = round(na.approx(lsts), 4)
 # lsts_per = round(na.interp(lsts), 4) # bfast monitor not needed!!!!!
-plot(lsts)
+# plot(lsts)
 # plot(lsts_lin)
 # plot(lsts_per)
 # plot(lsts_week)
@@ -183,9 +184,22 @@ SpatialBFM = function(pixels)
 plot(ndvi_msk %>% slice("t", 207))
 valid_obs = st_apply(ndvi_msk, c("x", "y"), function(x){sum(!is.na(x))}, PROGRESS=TRUE)
 plot(valid_obs)
-StarsResult = st_apply(ndvi_msk, c("x", "y"), SpatialBFM, PROGRESS = FALSE)
+StarsResult = st_apply(ndvi_msk, c("x", "y"), SpatialBFM, PROGRESS = TRUE)
 StarsResult
-plot(StarsResult)
+plot(StarsResult[aoi])
+StarsResult[aoi] %>% pull() %>% c() %>% hist()
+
+
+library(leaflet)
+m <- mapview(aoi)
+m@map = m@map %>% 
+  addWMSTiles(group = 'EuracMosaic',
+              #"https://watersgeo.epa.gov/arcgis/services/NHDPlus_NP21/NHDSnapshot_NP21/MapServer/WmsServer?",
+              "http://saocompute.eurac.edu/geoserver/ows?SERVICE=WMS",
+              layers  = 'SENTINEL2:S2_MOSAIC_2019_ST_stretch_mask_3857',
+              options = WMSTileOptions(format = "image/png", transparent = TRUE),
+              attribution = "") %>% mapview:::mapViewLayersControl(names = c("EuracMosaic"))
+m
 
 
 # forest -----------------------------------------------------------------------
@@ -194,7 +208,23 @@ plot(StarsResult)
 # forest density ---------------------------------------------------------------
 
 
+# bfast reporter
 
+# input 
+# ndvi collection, cloud mask, forrest mask
+# vaja storm damage shps
+# control shps
+
+# workflow 
+# loop through damage shps 
+# (loop through control shps)
+# count total pixels = forest pixels in aoi
+# count total observation dates
+# count valid observations (per year, per season) -> boxplot
+# count snow, cloud pixels (from mask)
+# get ndvi ts for aoi mean
+# get bfast breakpoints for aoi
+#  - cumsum of 
 
 
 
