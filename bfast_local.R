@@ -148,6 +148,7 @@ read_ndvi_hls = function(list_pth = fls_ndvi_hls_in$pth,
                                        values = list_date)
   
   # loop through patches here
+  aoi = st_transform(aoi, st_crs(ndvi_prox))
   aoi_bbox = st_bbox(aoi)
   ndvi_prox = ndvi_prox[aoi]
   
@@ -165,8 +166,6 @@ read_ndvi_hls = function(list_pth = fls_ndvi_hls_in$pth,
     # WHAT TO DO ON BIT 6-7 Aerosols? Is climatology good or bad
   })
   
-  
-  
   # apply mask to ndvi
   ndvi_msk = ndvi * fmask
   
@@ -183,7 +182,7 @@ ndvi_eurac = read_ndvi_eurac(list_pth = fls_ndvi_in$pth,
 
 # check that dates are the same on both input for hls: mask and ndvi
 ndvi_hls = read_ndvi_hls(list_pth = fls_ndvi_hls_in$pth, 
-                         list_msk = fls_mask_hls_in$pth, 
+                         list_mask = fls_mask_hls_in$pth, 
                          list_date = fls_ndvi_hls_in$date, 
                          aoi = aoi)
 
