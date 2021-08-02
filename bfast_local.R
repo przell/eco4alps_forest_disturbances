@@ -74,6 +74,7 @@ forest[[1]][forest[[1]] == 2] = 1
 # put reading ndvi_eurac into function with spatial subset
 # put reading ndvi_hls into function with spatial subset
 
+
 # s2 ndvi eurac ----------------------------------------------------------------
 # file list ndvi fmask
 path_ndvi = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/01_data/02_s2_ndvi_local_eurac/ndvi_novalevante_fmask"
@@ -84,42 +85,110 @@ fls_ndvi = tibble(pth = fls_ndvi,
 
 fls_ndvi_in = fls_ndvi %>% dplyr::filter(lubridate::year(date) >= 2016)
 
-# read as proxy
-ndvi_prox = read_stars(fls_ndvi_in$pth, proxy = TRUE, along = "t")
-ndvi_prox = stars::st_set_dimensions(.x = ndvi_prox, which = "t", 
-                                     values = fls_ndvi_in$date)
 
-# st_dimensions(ndvi)
-# st_get_dimension_values(ndvi, "t")
 
-# subset spatially
-# THIS IS WHERE TO LOOP THROUGH AREA
+read_ndvi_eurac = function(list_pth = fls_ndvi_in$pth, 
+                           list_date = fls_ndvi_in$date, 
+                           aoi){
+  # read as proxy
+  ndvi_prox = read_stars(list_pth, proxy = TRUE, along = "t")
+  ndvi_prox = stars::st_set_dimensions(.x = ndvi_prox, which = "t", 
+                                       values = list_date)
+  
+  # loop through patches here
+  aoi_bbox = st_bbox(aoi)
+  ndvi_prox = ndvi_prox[aoi_bbox]
+  
+  # read to r
+  ndvi = st_as_stars(ndvi_prox)
+  ndvi[[1]][(ndvi[[1]] > 1)] = NA
+  ndvi[[1]][(ndvi[[1]] < 0)] = NA
+  
+  
+  # create mask
+  fmask = ndvi %>% slice("band", 2)
+  fmask[[1]][fmask[[1]] > 0] = NA # set 1-4 to NA (clouds, snow etc.)
+  fmask = fmask + 1 # set 0 to 1 so that 1 is validdata
+  
+  # apply mask to ndvi
+  ndvi_msk = ndvi %>% slice("band", 1)
+  ndvi_msk = ndvi_msk * fmask
+  
+  return(ndvi_msk)
+} 
+
+
+# s2 ndvi eurac ----------------------------------------------------------------
+# file list ndvi fmask
+path_ndvi_hls = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/01_data/03_hls_s30_v014_ndvi"
+fls_ndvi_hls = list.files(path_ndvi_hls, pattern = "ndvi", full.names = TRUE)
+fls_ndvi_hls = tibble(pth = fls_ndvi_hls, 
+                     date = as.Date(substr(basename(fls_ndvi_hls), 1, 8), format = "%Y%m%d"))
+
+fls_ndvi_hls_in = fls_ndvi_hls %>% dplyr::filter(lubridate::year(date) >= 2016)
+
+path_mask_hls = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/01_data/03_hls_s30_v014_ndvi"
+fls_mask_hls = list.files(path_mask_hls, pattern = "QA", full.names = TRUE)
+fls_mask_hls = tibble(pth = fls_mask_hls, 
+                      date = as.Date(substr(basename(fls_mask_hls), 8, 15), format = "%Y%m%d"))
+
+fls_mask_hls_in = fls_mask_hls %>% dplyr::filter(lubridate::year(date) >= 2016)
+
+setdiff(fls_mask_hls_in$date, fls_ndvi_hls_in$date)
+setdiff(fls_ndvi_hls_in$date, fls_mask_hls_in$date)
+identical(fls_mask_hls_in$date, fls_ndvi_hls_in$date)
+
+read_ndvi_hls = function(list_pth = fls_ndvi_hls_in$pth,
+                         list_mask = fls_mask_hls_in$pth,
+                         list_date = fls_ndvi_in$date, 
+                         aoi){
+  # read as proxy
+  ndvi_prox = read_stars(list_pth, proxy = TRUE, along = "t")
+  ndvi_prox = stars::st_set_dimensions(.x = ndvi_prox, which = "t", 
+                                       values = list_date)
+  
+  # loop through patches here
+  aoi_bbox = st_bbox(aoi)
+  ndvi_prox = ndvi_prox[aoi]
+  
+  # read to r
+  ndvi = st_as_stars(ndvi_prox)
+  ndvi[[1]][(ndvi[[1]] > 1)] = NA
+  ndvi[[1]][(ndvi[[1]] < 0)] = NA
+  
+  # create mask
+  fmask_prox = read_stars(list_mask, proxy = TRUE)
+  fmask_prox = fmask_prox[aoi]
+  fmask = st_as_stars(fmask_prox)
+  fmask = st_apply(X = fmask, MARGIN = c("x", "y"), FUN = function(x){
+    ifelse(sum(as.integer(intToBits(x))[1:5]) == 0, 1, NA)
+    # WHAT TO DO ON BIT 6-7 Aerosols? Is climatology good or bad
+  })
+  
+  
+  
+  # apply mask to ndvi
+  ndvi_msk = ndvi * fmask
+  
+  return(ndvi_msk)
+} 
+
+
+# read ndvi --------------------------------------------------------------------
 aoi = area[127, ]
-#aoi = no_dist
-aoi_bbox = st_bbox(aoi)
 
-ndvi_prox = ndvi_prox[aoi_bbox]
+ndvi_eurac = read_ndvi_eurac(list_pth = fls_ndvi_in$pth, 
+                             list_date = fls_ndvi_in$date, 
+                             aoi = aoi)
 
-# read to r
-ndvi = st_as_stars(ndvi_prox)
-mapview(st_bbox(ndvi)) + mapview(aoi)
-
-# create mask
-fmask = ndvi %>% slice("band", 2)
-fmask[[1]][fmask[[1]] > 0] = NA # set 1-4 to NA (clouds, snow etc.)
-fmask = fmask + 1 # set 0 to 1 so that 1 is validdata
-
-# apply mask
-ndvi_msk = ndvi %>% slice("band", 1)
-#plot(ndvi_msk %>% slice("t", 200))
-ndvi_msk = ndvi_msk * fmask
-#plot(ndvi_msk %>% slice("t", 200))
+# check that dates are the same on both input for hls: mask and ndvi
+ndvi_hls = read_ndvi_hls(list_pth = fls_ndvi_hls_in$pth, 
+                         list_msk = fls_mask_hls_in$pth, 
+                         list_date = fls_ndvi_hls_in$date, 
+                         aoi = aoi)
 
 
-
-
-
-
+# analysis ---------------------------------------------------------------------
 
 # ndvi msk has the correct values
 ndvi_msk_valpx = st_apply(ndvi_msk, c("x","y"), function(x){

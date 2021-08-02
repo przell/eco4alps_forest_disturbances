@@ -113,7 +113,7 @@ b
 
 nrow(list_s2) == length(fls_ndvi)
 
-# todo:
+# todo in analyis skript :
 # set ndvi range to 0-1 upon read rest NA
 # read ndvi and mask seperately
 #  decode bitmask (frisi)
