@@ -140,7 +140,7 @@ identical(fls_mask_hls_in$date, fls_ndvi_hls_in$date)
 
 read_ndvi_hls = function(list_pth = fls_ndvi_hls_in$pth,
                          list_mask = fls_mask_hls_in$pth,
-                         list_date = fls_ndvi_in$date, 
+                         list_date = fls_ndvi_hls_in$date, 
                          aoi){
   # read as proxy
   ndvi_prox = read_stars(list_pth, proxy = TRUE, along = "t")
@@ -158,10 +158,10 @@ read_ndvi_hls = function(list_pth = fls_ndvi_hls_in$pth,
   ndvi[[1]][(ndvi[[1]] < 0)] = NA
   
   # create mask
-  fmask_prox = read_stars(list_mask, proxy = TRUE)
+  fmask_prox = read_stars(list_mask, along = "t", proxy = TRUE)
   fmask_prox = fmask_prox[aoi]
   fmask = st_as_stars(fmask_prox)
-  fmask = st_apply(X = fmask, MARGIN = c("x", "y"), FUN = function(x){
+  fmask = st_apply(X = fmask, MARGIN = c("x", "y", "t"), FUN = function(x){
     ifelse(sum(as.integer(intToBits(x))[1:5]) == 0, 1, NA)
     # WHAT TO DO ON BIT 6-7 Aerosols? Is climatology good or bad
   })
@@ -175,6 +175,8 @@ read_ndvi_hls = function(list_pth = fls_ndvi_hls_in$pth,
 
 # read ndvi --------------------------------------------------------------------
 aoi = area[127, ]
+# select aois that clearly show a change in 2018
+# create some aois where no change has happened per hand
 
 ndvi_eurac = read_ndvi_eurac(list_pth = fls_ndvi_in$pth, 
                              list_date = fls_ndvi_in$date, 
@@ -185,7 +187,10 @@ ndvi_hls = read_ndvi_hls(list_pth = fls_ndvi_hls_in$pth,
                          list_mask = fls_mask_hls_in$pth, 
                          list_date = fls_ndvi_hls_in$date, 
                          aoi = aoi)
-
+ndvi_msk = ndvi_hls
+ndvi_msk[[1]][ndvi_msk[[1]] <= 0] = NA
+ndvi_msk[[1]][ndvi_msk[[1]] >= 1] = NA
+aoi = st_transform(aoi, crs = st_crs(ndvi_msk))
 
 # analysis ---------------------------------------------------------------------
 
@@ -196,13 +201,11 @@ plot(ndvi_msk_valpx)
 # look what happens with them from here!
 
 # get mean ndvi for windthrow poly in 2017-2019
-ndvi_msk_cut = ndvi_msk[aoi]
-ndvi_msk_cut[[1]][ndvi_msk_cut[[1]] <= 0] = NA
-ndvi_msk_cut = st_apply(ndvi_msk_cut, c("t"), median, na.rm = TRUE) # 
-ndvi_ts = tibble(ndvi = ndvi_msk_cut %>% pull() %>% c(), 
-                 date = st_get_dimension_values(ndvi_msk_cut, "t"))
+ndvi_ts = st_apply(ndvi_msk, c("t"), median, na.rm = TRUE) # 
+ndvi_ts = tibble(ndvi = ndvi_ts %>% pull() %>% c(), 
+                 date = st_get_dimension_values(ndvi_msk, "t"))
 
-ggplot(ndvi_ts %>% filter(lubridate::year(date) == 2020), aes(x=date, y=ndvi)) +
+ggplot(ndvi_ts %>% filter(lubridate::year(date) == 2018), aes(x=date, y=ndvi)) +
   geom_line() +
   geom_point()
 
@@ -239,7 +242,7 @@ bfm_res = bfastmonitor(lsts, 2018,
 # harmon order = 3, reducing will lead to less seasonality = waves per year -> for forrest maybe 2 or 1
 # season sbins = 3, num of seasonal dummies -> 4 
 
-plot(bfm_res) # where do all these 1 and 0 come from? # THE TS LÖÖKS LIKE SHIT WITH ALL 1 and 0???
+plot(bfm_res)
 
 
 # IMPROVE ERROR HANDLING, CHECK LENGHT OF NON NA AND WRITE TO FILE
@@ -261,9 +264,13 @@ valid_obs = st_apply(ndvi_msk, c("x", "y"), function(x){sum(!is.na(x))}, PROGRES
 plot(valid_obs)
 StarsResult = st_apply(ndvi_msk, c("x", "y"), SpatialBFM, PROGRESS = TRUE)
 StarsResult
-plot(StarsResult[aoi])
-StarsResult[aoi] %>% pull() %>% c() %>% hist()
+plot(StarsResult)
+StarsResult %>% pull() %>% c() %>% hist()
 
+# accuracy
+# before
+# break_lag: 1, 2, 3, 6 , >6 months
+# no_break
 
 library(leaflet)
 m <- mapview(aoi)
