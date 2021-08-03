@@ -75,26 +75,26 @@ a = Sys.time()
 fls_ndvi = parLapply(cl = cl, X = purrr::transpose(list_s2), fun = function(x){
   
   # define temporary output bands
-  tmp_out_b04 = paste0(path_out, "/", "tmp_B04_", x$date, ".tif")
-  tmp_out_b08 = paste0(path_out, "/", "tmp_B08_", x$date, ".tif")
+  tmp_out_red = paste0(path_out, "/", "tmp_red_", x$date, ".tif")
+  tmp_out_nir = paste0(path_out, "/", "tmp_nir_", x$date, ".tif")
   tmp_out_qa = paste0(path_out, "/", "tmp_QA_", x$date, ".tif")
   
   # pull bands from hdf, cut and make to tif
   gdal_translate(file_in = paste0("HDF4_EOS:EOS_GRID:'", x$pth, "':Grid:B04"), 
-                 file_out = tmp_out_b04)
-  gdal_translate(file_in = paste0("HDF4_EOS:EOS_GRID:'", x$pth, "':Grid:B08"), 
-                 file_out = tmp_out_b08)
+                 file_out = tmp_out_red)
+  gdal_translate(file_in = paste0("HDF4_EOS:EOS_GRID:'", x$pth, "':Grid:B8A"), # B8A is narrow nir also avlbl in ls8 
+                 file_out = tmp_out_nir)
   gdal_translate(file_in = paste0("HDF4_EOS:EOS_GRID:'", x$pth, "':Grid:QA"), 
                  file_out = tmp_out_qa)
   
   # read red and nir and calc ndvi as proxy
-  s2 = read_stars(c(tmp_out_b04, tmp_out_b08), along = "bands", proxy = TRUE)
-  s2 = st_apply(X = s2, MARGIN = c("x", "y"), FUN = calc_ndvi)
+  ndvi = read_stars(c(tmp_out_red, tmp_out_nir), along = "bands", proxy = TRUE)
+  ndvi = st_apply(X = ndvi, MARGIN = c("x", "y"), FUN = calc_ndvi)
   
   # write the ndvi
   name_out = paste0(path_out, "/", x$date, "_ndvi_", 
                     tools::file_path_sans_ext(x$base_name), ".tif")
-  stars::write_stars(obj = s2, 
+  stars::write_stars(obj = ndvi, 
                      dsn = name_out, 
                      driver = "GTiff")
    
