@@ -272,6 +272,41 @@ StarsResult %>% pull() %>% c() %>% hist()
 # break_lag: 1, 2, 3, 6 , >6 months
 # no_break
 
+# bfast reporter
+
+# input 
+# ndvi collection, cloud mask, forrest mask
+# vaja storm damage shps
+# control shps
+
+# workflow 
+# loop through damage shps 
+# (loop through control shps)
+# count total pixels = forest pixels in aoi
+# count total observation dates
+# count valid observations (per year, per season) -> boxplot
+# count snow, cloud pixels (from mask)
+# get ndvi ts for aoi mean
+# get bfast breakpoints for aoi
+# % before
+# % break_lag: 1, 2, 3, 6 , >6 months
+# % no_break
+# get magnitude 
+
+# later in project checks:
+# winter
+# walddichte 2-3 klassen
+# datendichte anzahl der punkte
+# outliers -> spike filter
+# spatial resolution 3x3 vs pixel
+# 
+
+
+
+
+
+
+
 library(leaflet)
 m <- mapview(aoi)
 m@map = m@map %>% 
@@ -290,36 +325,6 @@ m
 # forest density ---------------------------------------------------------------
 
 
-# bfast reporter
-
-# input 
-# ndvi collection, cloud mask, forrest mask
-# vaja storm damage shps
-# control shps
-
-# workflow 
-# loop through damage shps 
-# (loop through control shps)
-# count total pixels = forest pixels in aoi
-# count total observation dates
-# count valid observations (per year, per season) -> boxplot
-# count snow, cloud pixels (from mask)
-# get ndvi ts for aoi mean
-# get bfast breakpoints for aoi
-#  - cumsum of 
-
-
-
-
-
-
-# checks:
-# winter
-# walddichte 2-3 klassen
-# datendichte anzahl der punkte
-# outliers -> spike filter
-# spatial resolution 3x3 vs pixel
-# 
 
 
 
