@@ -16,6 +16,14 @@ area = st_read(pth_area)
 mapview(st_bbox(area))
 area_bbox = st_bbox(area)
 
+area_bbox = st_bbox(c(xmin = 679210, 
+                      xmax = 700270, 
+                      ymax = 5151760, 
+                      ymin = 5126080), 
+                    crs = st_crs(32632))
+mapview(area_bbox)
+
+
 # l8 list ----------------------------------------------------------------------
 # make file list
 fls_l8 = list.files("/mnt/CEPH_PROJECTS/AI4EBV/EO/HLS/32TPS", 
@@ -77,7 +85,9 @@ fls_ndvi = parLapply(cl = cl, X = purrr::transpose(list_l8), fun = function(x){
   # define temporary output bands
   tmp_out_red = paste0(path_out, "/", "tmp_red_", x$date, ".tif")
   tmp_out_nir = paste0(path_out, "/", "tmp_nir_", x$date, ".tif")
-  tmp_out_qa = paste0(path_out, "/", "tmp_QA_", x$date, ".tif")
+  #tmp_out_qa = paste0(path_out, "/", "tmp_QA_", x$date, ".tif")
+  tmp_out_qa = paste0(path_out, "/", x$date, "_qa_", 
+                      tools::file_path_sans_ext(x$base_name), ".tif")
   
   # pull bands from hdf, cut and make to tif
   gdal_translate(file_in = paste0("HDF4_EOS:EOS_GRID:'", x$pth, "':Grid:band04"), 
@@ -125,7 +135,7 @@ tst[[1]][(tst[[1]] > 1)] = NA
 tst[[1]][(tst[[1]] < 0)] = NA
 plot(tst)
 
-fls_msk = list.files(path_out, pattern = "tmp_QA", full.names = T)
+fls_msk = list.files(path_out, pattern = "_qa_", full.names = T)
 msk = read_stars(fls_msk[[1]])
 msk[[1]][is.na(msk[[1]])] = 1
 msk[[1]][msk[[1]] != 1] = NA
