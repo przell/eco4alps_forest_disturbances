@@ -75,7 +75,7 @@ forest[[1]][forest[[1]] == 2] = 1
 # put reading ndvi_hls into function with spatial subset
 
 
-# s2 ndvi eurac ----------------------------------------------------------------
+# deleted data: s2 ndvi eurac ----------------------------------------------------------------
 # file list ndvi fmask
 path_ndvi = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/01_data/02_s2_ndvi_local_eurac/ndvi_novalevante_fmask"
 fls_ndvi = list.files(path_ndvi, full.names = TRUE)
@@ -117,22 +117,27 @@ read_ndvi_eurac = function(list_pth = fls_ndvi_in$pth,
   return(ndvi_msk)
 } 
 
+# deleted data: s2 ndvi eurac (done) ----
 
-# s2 ndvi eurac ----------------------------------------------------------------
+# s2/ls8 ndvi hls ----------------------------------------------------------------
 # file list ndvi fmask
-path_ndvi_hls = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/01_data/03_hls_s30_v014_ndvi"
-fls_ndvi_hls = list.files(path_ndvi_hls, pattern = "ndvi", full.names = TRUE)
-fls_ndvi_hls = tibble(pth = fls_ndvi_hls, 
-                     date = as.Date(substr(basename(fls_ndvi_hls), 1, 8), format = "%Y%m%d"))
+path_ndvi_hls = c("/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/01_data/03_hls_s30_v014_ndvi", 
+                  "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/01_data/03_hls_l30_v014_ndvi")
+fls_ndvi_hls = list.files(path_ndvi_hls, pattern = "_ndvi_", full.names = TRUE)
+fls_ndvi_hls = tibble(pth = fls_ndvi_hls,
+                      sensor = substr(basename(fls_ndvi_hls), 19, 21),
+                      date = as.Date(substr(basename(fls_ndvi_hls), 1, 8), format = "%Y%m%d"))
 
-fls_ndvi_hls_in = fls_ndvi_hls %>% dplyr::filter(lubridate::year(date) >= 2016)
+fls_ndvi_hls_in = fls_ndvi_hls %>% dplyr::filter(lubridate::year(date) >= 2016) %>% arrange(date)
 
-path_mask_hls = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/01_data/03_hls_s30_v014_ndvi"
-fls_mask_hls = list.files(path_mask_hls, pattern = "QA", full.names = TRUE)
+
+path_mask_hls = path_ndvi_hls
+fls_mask_hls = list.files(path_mask_hls, pattern = "_qa_", full.names = TRUE)
 fls_mask_hls = tibble(pth = fls_mask_hls, 
-                      date = as.Date(substr(basename(fls_mask_hls), 8, 15), format = "%Y%m%d"))
+                      sensor = substr(basename(fls_mask_hls), 17, 19), 
+                      date = as.Date(substr(basename(fls_mask_hls), 1, 8), format = "%Y%m%d"))
 
-fls_mask_hls_in = fls_mask_hls %>% dplyr::filter(lubridate::year(date) >= 2016)
+fls_mask_hls_in = fls_mask_hls %>% dplyr::filter(lubridate::year(date) >= 2016) %>% arrange(date)
 
 setdiff(fls_mask_hls_in$date, fls_ndvi_hls_in$date)
 setdiff(fls_ndvi_hls_in$date, fls_mask_hls_in$date)
@@ -178,11 +183,10 @@ aoi = area[127, ]
 # select aois that clearly show a change in 2018
 # create some aois where no change has happened per hand
 
-ndvi_eurac = read_ndvi_eurac(list_pth = fls_ndvi_in$pth, 
-                             list_date = fls_ndvi_in$date, 
-                             aoi = aoi)
+# ndvi_eurac = read_ndvi_eurac(list_pth = fls_ndvi_in$pth, 
+#                              list_date = fls_ndvi_in$date, 
+#                              aoi = aoi)
 
-# check that dates are the same on both input for hls: mask and ndvi
 ndvi_hls = read_ndvi_hls(list_pth = fls_ndvi_hls_in$pth, 
                          list_mask = fls_mask_hls_in$pth, 
                          list_date = fls_ndvi_hls_in$date, 
