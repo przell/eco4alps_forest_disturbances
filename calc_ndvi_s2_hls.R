@@ -16,12 +16,12 @@ area = st_read(pth_area)
 mapview(st_bbox(area))
 area_bbox = st_bbox(area)
 
-area_bbox = st_bbox(c(xmin = 679210, 
-                      xmax = 700270, 
-                      ymax = 5151760, 
-                      ymin = 5126080), 
-                    crs = st_crs(32632))
-mapview(area_bbox)
+# area_bbox = st_bbox(c(xmin = 679210, 
+#                       xmax = 700270, 
+#                       ymax = 5151760, 
+#                       ymin = 5126080), 
+#                     crs = st_crs(32632))
+# mapview(area_bbox)
 
 # s2 list ----------------------------------------------------------------------
 # make file list
