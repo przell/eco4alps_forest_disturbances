@@ -123,32 +123,66 @@ b
 
 nrow(list_l8) == length(fls_ndvi)
 
-# todo in analyis skript :
-# set ndvi range to 0-1 upon read rest NA
-# read ndvi and mask seperately
-#  decode bitmask (frisi)
-#  rename mask when decoded
-# delete tmp_files?!
-# 
-tst = read_stars(fls_ndvi[[1]])
-tst[[1]][(tst[[1]] > 1)] = NA
-tst[[1]][(tst[[1]] < 0)] = NA
-plot(tst)
+# set range of ndvi to 0-1 -----------------------------------------------------
+path_ndvi = c("/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/01_data/03_hls_l30_v014_ndvi")
+fls_ndvi = list.files(path_ndvi, pattern = "_ndvi_", full.names = TRUE)
 
-fls_msk = list.files(path_out, pattern = "_qa_", full.names = T)
-msk = read_stars(fls_msk[[1]])
-msk[[1]][is.na(msk[[1]])] = 1
-msk[[1]][msk[[1]] != 1] = NA
-
-msk2 = read_stars(fls_msk[[1]])
-msk2 = st_apply(X = msk2, MARGIN = c("x", "y"), FUN = function(x){
-  ifelse(sum(as.integer(intToBits(x))[1:5]) == 0, 1, NA)
-  #WHAT TO DO ON BIT 6-7 Aerosols? Is climatology good or bad
+n_cores <- detectCores() - 2
+cl <- makeCluster(n_cores)
+clusterEvalQ(cl = cl, expr = {
+  library(stars)
+  library(sf)
+  library(dplyr)
 })
 
+# apply in parallel
+a = Sys.time()
+fls_ndvi01 = parLapply(cl = cl, X = fls_ndvi, fun = function(x){
+  
+  ndvi = read_stars(x)
+  ndvi[[1]][(ndvi[[1]] > 1)] = NA
+  ndvi[[1]][(ndvi[[1]] < 0)] = NA
+  
+  stars::write_stars(obj = ndvi, 
+                     dsn = x, 
+                     driver = "GTiff")
+  return(x)
+})
 
-plot(msk)
-plot(msk2)
-tst_msk2 = msk2*tst
-plot(tst_msk2)
-plot(tst)
+stopCluster(cl)
+b = Sys.time() - a
+b
+
+# create binary mask from bitmask ----------------------------------------------
+# here we use the most strict masking (but not aerosols) to make a binary mask
+# https://hls.gsfc.nasa.gov/wp-content/uploads/2019/01/HLS.v1.4.UserGuide_draft_ver3.1.pdf
+path_msk = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/01_data/03_hls_l30_v014_ndvi"
+fls_msk = list.files(path_msk, pattern = "_qa_", full.names = T)
+
+n_cores <- detectCores() - 2
+cl <- makeCluster(n_cores)
+clusterEvalQ(cl = cl, expr = {
+  library(stars)
+  library(sf)
+  library(dplyr)
+})
+
+# apply in parallel
+a = Sys.time()
+fls_msk01 = parLapply(cl = cl, X = fls_msk, fun = function(x){
+  
+  msk = read_stars(x)
+  msk = st_apply(X = msk, MARGIN = c("x", "y"), FUN = function(x){
+    ifelse(sum(as.integer(intToBits(x))[1:5]) == 0, 1, NA)
+  })
+  stars::write_stars(obj = msk, 
+                     dsn = x, 
+                     driver = "GTiff")
+  return(x)
+})
+
+stopCluster(cl)
+b = Sys.time() - a
+b
+
+length(fls_msk) == length(fls_msk01)
