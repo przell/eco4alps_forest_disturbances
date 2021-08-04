@@ -25,6 +25,7 @@ fls_ndvi = tibble(pth = fls_ndvi,
 
 fls_ndvi = fls_ndvi %>% dplyr::filter(lubridate::year(date) >= 2016) %>% arrange(date)
 
+#
 # testing --------------------------------------------------------------------
 # bbox = st_bbox(read_stars(fls_ndvi$pth[[1]]))
 # aoi = sf::st_make_grid(x = bbox, n = c(6,8))
@@ -32,7 +33,7 @@ fls_ndvi = fls_ndvi %>% dplyr::filter(lubridate::year(date) >= 2016) %>% arrange
 # aoi = aoi[12]
 # 
 # ndvi_prox = read_stars(fls_ndvi$pth, along = "t", proxy = TRUE)
-# ndvi_prox = stars::st_set_dimensions(.x = ndvi_prox, which = "t", 
+# ndvi_prox = stars::st_set_dimensions(.x = ndvi_prox, which = "t",
 #                                      values = fls_ndvi$date)
 # ndvi = st_as_stars(ndvi_prox[aoi])
 # plot(ndvi %>% slice("t", 2))
@@ -68,7 +69,7 @@ spatial_bfm = function(pixels, dates, start_monitor = 2018, val = "breakpoint") 
   #stopifnot(val %in% c("breakpoint", "magnitude"))
   
   # create ts object for bfast
-  lsts = bfastts(pixels, ndvi_dates, type = c("irregular"))
+  lsts = bfastts(pixels, dates, type = c("irregular"))
   
   # make sure there are enough observations
   if (sum(!is.na(lsts)) < 100){
@@ -76,20 +77,32 @@ spatial_bfm = function(pixels, dates, start_monitor = 2018, val = "breakpoint") 
   }
   
   # run bfast and return the selected value into the raster
-  bfastmonitor(lsts, 
+  res = bfastmonitor(lsts, 
                start_monitor, 
                formula = response~harmon, 
                order = 1, 
                history = "all", 
                verbose = F)[[val]]
+  if(is.na(res)){
+    return(0)
+  }
+  
+  return(res)
   
 }
 
-# ndvi_dates = fls_ndvi$date
+
 # brks = st_apply(ndvi, c("x", "y"), PROGRESS = TRUE, function(x){
 #   spatial_bfm(pixels = x, dates = fls_ndvi$date, start_monitor = 2018, val = "breakpoint")
 # })
 # valid_px = st_apply(ndvi, c("x", "y"), function(x){sum(!is.na(x))}, PROGRESS=TRUE)
+# cnt_px = length(brks[[1]])
+# cnt_forest = sum(!is.na(brks[[1]]))
+# cnt_noforest = sum(is.na(brks[[1]]))
+# cnt_forest + cnt_noforest == cnt_px
+# cnt_brk = sum(brks[[1]] > 0, na.rm = T)
+# cnt_no_brk = sum(brks[[1]] == 0, na.rm = T)
+# cnt_brk + cnt_no_brk == cnt_forest
 
 # run bfast on whole scene -----------------------------------------------------
 pth_out = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/03_results/"
@@ -101,7 +114,7 @@ n_cores <- detectCores() - 2
 cl <- makeCluster(n_cores)
 
 clusterExport(cl = cl, 
-              varlist = c("SpatialBFM", "fls_ndvi", "pth_out"), 
+              varlist = c("spatial_bfm", "fls_ndvi", "pth_out"), 
               envir = environment())
 
 clusterEvalQ(cl = cl, expr = {
@@ -112,52 +125,25 @@ clusterEvalQ(cl = cl, expr = {
   library(pbapply)
 })
 
+a = Sys.time()
 brks = st_apply(X = ndvi_prox, MARGIN = c("x", "y"), CLUSTER = cl, function(x){
   spatial_bfm(pixels = x, dates = fls_ndvi$date, start_monitor = 2018, val = "breakpoint")
 })
 write_stars(brks, paste0(pth_out, "brks.tif"))
+Sys.time() - a 
 
 magn = st_apply(X = ndvi_prox, MARGIN = c("x", "y"), CLUSTER = cl, function(x){
   spatial_bfm(pixels = x, dates = fls_ndvi$date, start_monitor = 2018, val = "magnitude")
 })
-write_stars(magnitude, paste0(pth_out, "magn.tif"))
+write_stars(magn, paste0(pth_out, "magn.tif"))
+Sys.time() - a
 
 val_obs = st_apply(ndvi_prox, c("x","y"), function(x){sum(!is.na(x))})
 write_stars(val_obs, paste0(pth_out, "val_obs.tif"))
+Sys.time() - a
 
 stopCluster(cl)
 
-# bfast reporter
-
-# input 
-# ndvi collection, cloud mask, forrest mask
-# vaja storm damage shps
-# control shps
-
-# workflow 
-# loop through damage shps 
-# (loop through control shps)
-# count total pixels = forest pixels in aoi
-# count total observation dates
-# count valid observations (per year, per season) -> boxplot
-# count snow, cloud pixels (from mask)
-# get ndvi ts for aoi mean
-# get bfast breakpoints for aoi
-# % before
-# % break_lag: 1, 2, 3, 6 , >6 months
-# % no_break
-# get magnitude 
-
-# later in project checks:
-# winter
-# walddichte 2-3 klassen
-# datendichte anzahl der punkte
-# outliers -> spike filter
-# spatial resolution 3x3 vs pixel
-# 
-
-
-# function to convert decimal year to date
 
 
 
