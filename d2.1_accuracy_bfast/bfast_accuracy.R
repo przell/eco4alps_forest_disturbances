@@ -54,20 +54,16 @@ library(xts)
 library(zoo)
 library(forecast)
 library(ggplot2)
+library("rmarkdown")
 
 
 # data ------------------------------------------------------------------------
-pth_res = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/03_results/"
-pth_brks = paste0(pth_res, "brks.tif")
-pth_magn = paste0(pth_res, "magn.tif")
-pth_val_obs = paste0(pth_res, "val_obs.tif")
+pth_res = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/03_results/bfast"
+fls_brks = list.files(pth_res, pattern = "brks_", full.names = TRUE)
 
-brks = read_stars(pth_brks)
-magn = read_stars(pth_magn)
-val_obs = read_stars(pth_val_obs)
-
-pth_forest = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/01_data/01_reference_data/FTY_2018_030m_binary_ndvi_mask.tif"
-forest = read_stars(pth_forest)
+# magnitude and valid obs not analysed so far
+# pth_magn = paste0(pth_res, "magn.tif")
+# pth_val_obs = paste0(pth_res, "val_obs.tif")
 
 pth_wind = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/01_data/01_reference_data/area_32632.shp"
 wind = st_read(pth_wind)
@@ -93,22 +89,20 @@ analyse_brks = function(brks, event_date = NULL){
   # make break no break table for analysing areas without disturbance
   brk_table = data.frame(cls = c("brk", "no_brk"), 
                          freq = c(cnt$cnt_brk, cnt$cnt_no_brk))
-  brk_table$freq_perc = df_brk$freq / sum(df_brk$freq) * 100
+  brk_table$freq_perc = brk_table$freq / sum(brk_table$freq) * 100
   
-  plt_brk_pie = ggplot(df_brk, aes(x="", y=freq_perc, fill=cls)) +
-    geom_bar(width = 1, stat = "identity", color = "black", size = 0.25)
+  plt_brk_pie = ggplot(brk_table, aes(x="", y=freq_perc, fill=cls)) +
+    geom_bar(width = 1, stat = "identity", color = "black", size = 0.25) +
     coord_polar("y", start=0) 
   
   # scale_fill_brewer(palette="RdYlGn", direction = -1) 
   # scale_fill_manual(values = c("#d73027", "#1a9850"))
   
-  
-  
   # set no_break to na to not interfere with further analysis
   brks[[1]][brks[[1]] == 0] = NA 
   
   # pull data
-  brks_v = as.vector(brks$brks.tif)
+  brks_v = as.vector(brks[[1]])
   
   # quantiles
   quantiles = date_decimal(quantile(brks_v, na.rm = T)) %>% as.Date()
@@ -173,7 +167,7 @@ analyse_brks = function(brks, event_date = NULL){
                                       "12mnth", ">12mnth", "no_break", "before"), 
                            ordered = TRUE)
     
-    plt_acc_pie = ggplot(acc_table, aes(x="", y=freq, fill=cls)) +
+    plt_acc_pie = ggplot(acc_table, aes(x="", y=freq_perc, fill=cls)) +
       geom_bar(width = 1, stat = "identity", color = "black", size = 0.25) +
       coord_polar("y", start=0) + 
       scale_fill_brewer(palette="RdYlGn", direction = -1)
@@ -200,48 +194,102 @@ analyse_brks = function(brks, event_date = NULL){
 }
 
 
-# analysis ---------------------------------------------------------------------
-# get values in wind areas
-wind = st_transform(wind, crs = st_crs(brks))
-brks_wind = brks[wind]
-plot(brks_wind) # 0 = no brk, NA = forest! 
+# analysis wind event ----------------------------------------------------------
+# pick bfast runs that have the vaja event in it: monitoring start in 2018
+fls_brks_wind = fls_brks[grepl(pattern = "_2018_", x = fls_brks)]
 
-anal_brks_wind = analyse_brks(brks = brks_wind, event_date = "2018-10-27")
-names(anal_brks_wind)
+# analyze areas where an event has been reported
+lst_anal_wind = lapply(fls_brks_wind, function(x){
+  message(paste0("at: ", x))
+  brks = read_stars(x)
+  # only keep pixels that are inside of an event site
+  wind = st_transform(wind, crs = st_crs(brks))
+  brks = brks[wind]
+  # analyze
+  anal_wind = analyse_brks(brks = brks, event_date = "2018-10-27")
+  
+})
+names(lst_anal_wind) = basename(fls_brks_wind)
 
-# color this guy according to validity:
-# 1 - 12 mnth: green to yellow
-# >12 mnth, no break, before: red
-anal_brks_wind$plt_pie_event
+# add meta info from file name to list
+meta = lapply(fls_brks_wind, function(x){
+  x = basename(x)
+  list(meta = list(input_file = x, 
+                   start_period = substr(x, 6, 9),
+                   stop_period = substr(x, 11,14), 
+                   start_monitoring = substr(x, 22, 25), 
+                   level = gsub(pattern = ".*level_(.+)\\.tif$", 
+                                replacement = "\\1", x = x)))
+})
+names(meta) = names(lst_anal_wind)
+lst_anal_wind = Map(c, lst_anal_wind, meta)
 
-anal_brks = analyse_brks(brks)
-names(anal_brks)
+# save the list elements to rds that can be loaded by markdown
+pth_report = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/03_results/acc_reports/"
+lapply(names(lst_anal_wind), function(x){
+  saveRDS(object = lst_anal_wind[[x]], 
+          file = paste0(pth_report, "acc_event_", tools::file_path_sans_ext(x), ".RDS"))
+})
 
 
+# event report 
+# template event.rmd
+lapply(names(lst_anal_wind), function(x){
+  rds_file = paste0(pth_report, "acc_event_", tools::file_path_sans_ext(x), ".RDS")
+  render(input = "d2.1_accuracy_bfast/template_event.Rmd", 
+         output_file = paste0(pth_report, "acc_event_", tools::file_path_sans_ext(x), ".html"),
+         params = list(title = paste0("Accuracy Report - ", x), 
+                       pth_data = rds_file))
+})
 
+
+# analysis no disturbance -----------------------------------------------------
 # get values in no wind areas
-no_wind = sf::st_difference(x = st_as_sfc(st_bbox(wind)), y = st_union(wind))
-brks_nowind = brks[no_wind]
-anal_brks_nowind = analyse_brks(brks = brks_nowind)
+fls_brks 
 
-anal_brks_nowind$plt_hist
+# analyze areas where no event was recorded (that we know of)
+lst_anal = lapply(fls_brks, function(x){
+  message(paste0("at: ", x))
+  brks = read_stars(x)
+  # cut out wind areas from bounding box, so that they are not analyzed
+  wind = st_transform(wind, crs = st_crs(brks))
+  no_wind = st_difference(x = st_as_sfc(st_bbox(wind)), y = st_union(wind))
+  brks = brks[no_wind]
+  # analyze
+  anal = analyse_brks(brks = brks, event_date = NULL)
+  
+})
+names(lst_anal) = basename(fls_brks)
 
-# tbl = anal_brks_wind$event_table
-# tbl$cls = factor(tbl$cls, 
-#                        levels = c("1mnth", "2mnth", "3mnth", "6mnth", 
-#                                   "12mnth", ">12mnth", "no_break", "before"), 
-#                        ordered = TRUE)
-# RdYlGn
-# 
-# ggplot(tbl, aes(x="", y=freq_perc, fill=cls)) +
-#   geom_bar(width = 1, stat = "identity", color = "black", size = 0.25) +
-#   coord_polar("y", start=0)   + 
-#   scale_fill_brewer(palette="RdYlGn", direction = -1)
+# add meta info from file name to list
+meta = lapply(fls_brks, function(x){
+  x = basename(x)
+  list(meta = list(input_file = x, 
+                   start_period = substr(x, 6, 9),
+                   stop_period = substr(x, 11,14), 
+                   start_monitoring = substr(x, 22, 25), 
+                   level = gsub(pattern = ".*level_(.+)\\.tif$", 
+                                replacement = "\\1", x = x)))
+})
+names(meta) = names(lst_anal)
+lst_anal = Map(c, lst_anal, meta)
+
+# save the list elements to rds that can be loaded by markdown
+pth_report = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/03_results/acc_reports/"
+lapply(names(lst_anal), function(x){
+  saveRDS(object = lst_anal[[x]], 
+          file = paste0(pth_report, "acc_noevent_", tools::file_path_sans_ext(x), ".RDS"))
+})
 
 
-
-
-# this has to be in percent
+# non event report 
+lapply(names(lst_anal), function(x){
+  rds_file = paste0(pth_report, "acc_noevent_", tools::file_path_sans_ext(x), ".RDS")
+  render(input = "d2.1_accuracy_bfast/template_noevent.Rmd", 
+         output_file = paste0(pth_report, "acc_noevent_", tools::file_path_sans_ext(x), ".html"),
+         params = list(title = paste0("Accuracy Report - ", x), 
+                       pth_data = rds_file))
+})
 
 
 
@@ -250,6 +298,7 @@ anal_brks_nowind$plt_hist
 #  magnitude
 #  level
 #  influence of more years as history
+#  run bfast mulitple times, if break is detected, run again and remove detection point?!
 
 # repeat this yearly and actually only estimate for a year
 

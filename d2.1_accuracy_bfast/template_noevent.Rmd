@@ -1,0 +1,73 @@
+---
+params:
+  title: !r "no_event_report"
+  pth_data: !r "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/03_results/acc_reports/acc_noevent_brks_2016_2020_start_2018_level_0.001.RDS"
+title: "`r params$title`"
+author: "pzellner"
+date: "`r Sys.Date()`"
+
+output:
+  html_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libs, echo=FALSE}
+library(dplyr)
+library(ggplot2)
+```
+
+```{r data, echo=FALSE}
+data = readRDS(params$pth_data)
+```
+
+# Report on no event areas
+
+## Metadata
+Information on the bfast run
+```{r meta, echo=FALSE}
+data$meta
+```
+
+## Count of pixels
+
+```{r cnt, echo=FALSE}
+data$cnt
+```
+
+## Break/no break
+
+```{r brk_table, echo=FALSE}
+data$brk_table
+```
+
+```{r plt_brk_pie, echo=FALSE}
+data$plt_brk_pie
+```
+
+## Temporal distribution of breakpoints
+
+Quantiles
+
+```{r quantiles, echo=FALSE}
+data$quantiles
+```
+
+Histogram
+
+```{r hist, echo=FALSE}
+data$plt_hist
+```
+
+Boxplot
+
+```{r boxplot, echo=FALSE}
+data$plt_boxplot
+```
+
+
+
+
