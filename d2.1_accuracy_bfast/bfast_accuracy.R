@@ -75,6 +75,7 @@ wind = st_read(pth_wind)
 
 # function analyser ------------------------------------------------------------
 # function to analyse breakpoint of bfastmonitor output stars object
+
 analyse_brks = function(brks, event_date = NULL){
   # get total count and no_brk count
   cnt = list(
@@ -88,6 +89,20 @@ analyse_brks = function(brks, event_date = NULL){
   # test
   stopifnot(cnt$cnt_forest + cnt$cnt_noforest == cnt$cnt_total)
   stopifnot(cnt$cnt_brk + cnt$cnt_no_brk == cnt$cnt_forest)
+  
+  # make break no break table for analysing areas without disturbance
+  brk_table = data.frame(cls = c("brk", "no_brk"), 
+                         freq = c(cnt$cnt_brk, cnt$cnt_no_brk))
+  brk_table$freq_perc = df_brk$freq / sum(df_brk$freq) * 100
+  
+  plt_brk_pie = ggplot(df_brk, aes(x="", y=freq_perc, fill=cls)) +
+    geom_bar(width = 1, stat = "identity", color = "black", size = 0.25)
+    coord_polar("y", start=0) 
+  
+  # scale_fill_brewer(palette="RdYlGn", direction = -1) 
+  # scale_fill_manual(values = c("#d73027", "#1a9850"))
+  
+  
   
   # set no_break to na to not interfere with further analysis
   brks[[1]][brks[[1]] == 0] = NA 
@@ -115,6 +130,8 @@ analyse_brks = function(brks, event_date = NULL){
   # assemble results in list
   res = list(
     "cnt" = cnt, 
+    "brk_table" = brk_table, 
+    "plt_brk_pie" = plt_brk_pie,
     "quantiles" = quantiles, 
     "plt_hist" = plt_hist, 
     "plt_boxplot" = plt_boxplot
@@ -151,9 +168,16 @@ analyse_brks = function(brks, event_date = NULL){
       mutate(freq_perc = Freq/sum(Freq)*100) %>% 
       rename(freq = Freq)
     
+    acc_table$cls = factor(acc_table$cls, 
+                           levels = c("1mnth", "2mnth", "3mnth", "6mnth", 
+                                      "12mnth", ">12mnth", "no_break", "before"), 
+                           ordered = TRUE)
+    
     plt_acc_pie = ggplot(acc_table, aes(x="", y=freq, fill=cls)) +
-      geom_bar(width = 1, stat = "identity") +
-      coord_polar("y", start=0)  
+      geom_bar(width = 1, stat = "identity", color = "black", size = 0.25) +
+      coord_polar("y", start=0) + 
+      scale_fill_brewer(palette="RdYlGn", direction = -1)
+      
     
     # add vline to hist where event is
     event_date_dec = decimal_date(event_date)
@@ -181,6 +205,7 @@ analyse_brks = function(brks, event_date = NULL){
 wind = st_transform(wind, crs = st_crs(brks))
 brks_wind = brks[wind]
 plot(brks_wind) # 0 = no brk, NA = forest! 
+
 anal_brks_wind = analyse_brks(brks = brks_wind, event_date = "2018-10-27")
 names(anal_brks_wind)
 
@@ -201,15 +226,23 @@ anal_brks_nowind = analyse_brks(brks = brks_nowind)
 
 anal_brks_nowind$plt_hist
 
+# tbl = anal_brks_wind$event_table
+# tbl$cls = factor(tbl$cls, 
+#                        levels = c("1mnth", "2mnth", "3mnth", "6mnth", 
+#                                   "12mnth", ">12mnth", "no_break", "before"), 
+#                        ordered = TRUE)
+# RdYlGn
+# 
+# ggplot(tbl, aes(x="", y=freq_perc, fill=cls)) +
+#   geom_bar(width = 1, stat = "identity", color = "black", size = 0.25) +
+#   coord_polar("y", start=0)   + 
+#   scale_fill_brewer(palette="RdYlGn", direction = -1)
 
-df_brk = data.frame(cls = c("n_brk", "n_no_brk"), 
-           freq = c(anal_brks_nowind$cnt$cnt_brk, 
-                   n_nobrk = anal_brks_nowind$cnt$cnt_no_brk))
+
+
 
 # this has to be in percent
-ggplot(df_brk, aes(x="", y=freq, fill=cls)) +
-  geom_bar(width = 1, stat = "identity") +
-  coord_polar("y", start=0)  
+
 
 
 # to reduce the detections
