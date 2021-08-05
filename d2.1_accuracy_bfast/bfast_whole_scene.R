@@ -63,7 +63,8 @@ fls_ndvi = fls_ndvi %>% dplyr::filter(lubridate::year(date) >= 2016) %>% arrange
 # testing (done) ----
 
 # run bfast --------------------------------------------------------------------
-spatial_bfm = function(pixels, dates, start_monitor = 2018, val = "breakpoint") {
+spatial_bfm = function(pixels, dates, start_monitor = 2018, level = c(0.05, 0.05), 
+                       val = "breakpoint") {
   # error handling
   #stopifnot(length(pixels) == length(dates)) 
   #stopifnot(val %in% c("breakpoint", "magnitude"))
@@ -82,6 +83,7 @@ spatial_bfm = function(pixels, dates, start_monitor = 2018, val = "breakpoint") 
                formula = response~harmon, 
                order = 1, 
                history = "all", 
+               level = level,
                verbose = F)[[val]]
   if(is.na(res)){
     return(0)
@@ -105,16 +107,21 @@ spatial_bfm = function(pixels, dates, start_monitor = 2018, val = "breakpoint") 
 # cnt_brk + cnt_no_brk == cnt_forest
 
 # run bfast on whole scene -----------------------------------------------------
-pth_out = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/03_results/"
+pth_out = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/03_results/bfast/"
 ndvi_prox = read_stars(fls_ndvi$pth, along = "t", proxy = T)
 ndvi_prox = stars::st_set_dimensions(.x = ndvi_prox, which = "t", 
                                      values = fls_ndvi$date)
+
+# params
+level = c(0.001, 0.001) # 0.001 // Significance levels of the monitoring and ROC (if selected) procedure, i.e., probability of type I error.
+start_monitor = 2020
+
 # setup clusters
 n_cores <- detectCores() - 2
 cl <- makeCluster(n_cores)
 
 clusterExport(cl = cl, 
-              varlist = c("spatial_bfm", "fls_ndvi", "pth_out"), 
+              varlist = c("spatial_bfm", "fls_ndvi", "pth_out", "start_monitor", "level"), 
               envir = environment())
 
 clusterEvalQ(cl = cl, expr = {
@@ -126,27 +133,32 @@ clusterEvalQ(cl = cl, expr = {
 })
 
 a = Sys.time()
+out_name = paste0(pth_out, "brks_2016_2020_start_", start_monitor, "_level_", level[1], ".tif")
 brks = st_apply(X = ndvi_prox, MARGIN = c("x", "y"), CLUSTER = cl, function(x){
-  spatial_bfm(pixels = x, dates = fls_ndvi$date, start_monitor = 2018, val = "breakpoint")
+  spatial_bfm(pixels = x, dates = fls_ndvi$date, start_monitor = start_monitor, 
+              level = level, val = "breakpoint")
 })
-write_stars(brks, paste0(pth_out, "brks.tif"))
+write_stars(brks, out_name)
 Sys.time() - a 
 
+out_name = paste0(pth_out, "magn_2016_2020_start_", start_monitor, "_level_", level[1], ".tif")
 magn = st_apply(X = ndvi_prox, MARGIN = c("x", "y"), CLUSTER = cl, function(x){
-  spatial_bfm(pixels = x, dates = fls_ndvi$date, start_monitor = 2018, val = "magnitude")
+  spatial_bfm(pixels = x, dates = fls_ndvi$date, start_monitor = start_monitor, 
+              level = level, val = "magnitude")
 })
-write_stars(magn, paste0(pth_out, "magn.tif"))
+write_stars(magn, out_name)
 Sys.time() - a
 
+out_name = paste0(pth_out, "val_obs_2016_2020_start_", start_monitor, "_level_", level[1], ".tif")
 val_obs = st_apply(ndvi_prox, c("x","y"), function(x){sum(!is.na(x))})
-write_stars(val_obs, paste0(pth_out, "val_obs.tif"))
+write_stars(val_obs, out_name)
 Sys.time() - a
 
 stopCluster(cl)
 
 
 
-
+# END
 
 
 
