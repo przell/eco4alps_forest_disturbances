@@ -54,7 +54,7 @@ library(xts)
 library(zoo)
 library(forecast)
 library(ggplot2)
-library("rmarkdown")
+library(rmarkdown)
 
 
 # data ------------------------------------------------------------------------
