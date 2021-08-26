@@ -16,10 +16,10 @@ area = st_read(pth_area)
 mapview(st_bbox(area))
 area_bbox = st_bbox(area)
 
-# area_bbox = st_bbox(c(xmin = 679210, 
-#                       xmax = 700270, 
-#                       ymax = 5151760, 
-#                       ymin = 5126080), 
+# area_bbox = st_bbox(c(xmin = 679210,
+#                       xmax = 700270,
+#                       ymax = 5151760,
+#                       ymin = 5126080),
 #                     crs = st_crs(32632))
 # mapview(area_bbox)
 
@@ -61,9 +61,15 @@ gdal_translate = function(file_in, file_out){
   return(file_out)
 }
 
+#path_out = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/01_data/test_stars"
 path_out = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/01_data/03_hls_s30_v014_ndvi"
-aoi = area_bbox
+
+# aoi not used since hardcoded in gdal_translate !!!!
+# aoi = area_bbox
+
 # if the area gets too large i get this error upon st_write:
+# Error in dim.stars(x) : length(d) == length(dim(x[[1]])) is not TRUE
+
 
 # initiate cluster
 n_cores <- detectCores() - 2

@@ -1,0 +1,61 @@
+---
+title: "Forest Disturbance Service - Accuracy"
+output: 
+  flexdashboard::flex_dashboard:
+  orientation: rows
+vertical_layout: fill
+---
+  
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(mapview)
+library(sf)
+library(stars)
+```
+
+Row
+-----------------------------------------------------------------------
+  
+### Description
+Gathered reports on the accuracy testing for the Forest Disturbance Service
+using bfast and the harmonized Sentinel-2/Landsat-8 collection. The different 
+reports are showing:
+  - event / no-event tests
+  - different length of the stable history (for no events)
+  - different parametrization
+
+### Study Area
+```{r get_aoi, include=FALSE}
+pth_brks = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/03_results/bfast/brks_2016_2020_start_2018_level_0.001.tif"
+aoi = read_stars(pth_brks, proxy = TRUE) %>% st_bbox()
+```
+
+```{r mapview_aoi}
+mapview(aoi)
+```
+
+
+Row
+-----------------------------------------------------------------------
+  
+### Accuracy of Events
+  
+```{r}
+valueBox(1, icon = "fa-pencil", href="./03_results/acc_event_brks_2016_2020_start_2018_level_0.001.html")
+```
+
+### Accuracy of Non-Events 1
+
+```{r}
+valueBox(2, icon = "fa-pencil", href="./03_results/acc_noevent_brks_2016_2020_start_2018_level_0.001.html")
+```
+
+### Accuracy of Non-Events 2
+
+```{r}
+valueBox(3, icon = "fa-pencil", href="./03_results/acc_noevent_brks_2016_2020_start_2020_level_0.001.html")
+```
+
+
+
+
