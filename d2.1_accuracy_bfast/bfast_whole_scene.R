@@ -15,7 +15,14 @@ library(zoo)
 library(forecast)
 library(ggplot2)
 
-# s2/ls8 ndvi hls ----------------------------------------------------------------
+# path to results --------------------------------------------------------------
+pth_out = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/03_results/bfast/"
+
+# s2/ls8 ndvi hls --------------------------------------------------------------
+# it is masked to the copernicus high resolution forest forest type 2018
+# https://land.copernicus.eu/pan-european/high-resolution-layers/forests
+# "/mnt/CEPH_PROJECTS/ECO4Alps/Land_Cover/Land_cover_data/HR_Layer/FTY_2018_010m_32632.tif"
+
 # file list ndvi fmask
 path_ndvi = c("/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/01_data/04_hls_combined_v014_ndvi_fmask_forest")
 fls_ndvi = list.files(path_ndvi, pattern = "_ndvi_", full.names = TRUE)
@@ -24,6 +31,7 @@ fls_ndvi = tibble(pth = fls_ndvi,
                   date = as.Date(substr(basename(fls_ndvi), 1, 8), format = "%Y%m%d"))
 
 fls_ndvi = fls_ndvi %>% dplyr::filter(lubridate::year(date) >= 2016) %>% arrange(date)
+
 
 #
 # testing --------------------------------------------------------------------
@@ -62,7 +70,7 @@ fls_ndvi = fls_ndvi %>% dplyr::filter(lubridate::year(date) >= 2016) %>% arrange
 # plot(res_px)
 # testing (done) ----
 
-# run bfast --------------------------------------------------------------------
+# spatial bfast monitor function -----------------------------------------------
 spatial_bfm = function(pixels, dates, start_monitor = 2018, level = c(0.05, 0.05), 
                        val = "breakpoint") {
   # error handling
@@ -106,12 +114,15 @@ spatial_bfm = function(pixels, dates, start_monitor = 2018, level = c(0.05, 0.05
 # cnt_no_brk = sum(brks[[1]] == 0, na.rm = T)
 # cnt_brk + cnt_no_brk == cnt_forest
 
-# run bfast on whole scene -----------------------------------------------------
-pth_out = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/03_results/bfast/"
+# load ndvi --------------------------------------------------------------------
 ndvi_prox = read_stars(fls_ndvi$pth, along = "t", proxy = T)
 ndvi_prox = stars::st_set_dimensions(.x = ndvi_prox, which = "t", 
                                      values = fls_ndvi$date)
+st_crs(ndvi_prox)
+st_bbox(ndvi_prox)
+range(fls_ndvi$date)
 
+# run bfast --------------------------------------------------------------------
 # params
 level = c(0.001, 0.001) # 0.001 // Significance levels of the monitoring and ROC (if selected) procedure, i.e., probability of type I error.
 start_monitor = 2020
