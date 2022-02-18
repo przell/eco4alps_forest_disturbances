@@ -33,12 +33,13 @@ fc = fc[st_bbox(st_transform(ext_ndvi, st_crs(fc)))]
 fc = st_as_stars(fc)
 
 # convert values 
-# 0 -> NA (no forest)
-# 1-17 -> NA (changes before 2018) -> copernicus fty hr layer for forest mask is 2018
+# 0 -> 1 (no forest change): not relevant for mask
+# 1-17 -> 1 (changes before 2018) -> copernicus fty hr layer for forest mask is 2018
 # 18-20 -> 2018 - 2020 (changes that will be used to mask pixels according to start of)
-fc[[1]][fc[[1]] == 0] = NA
-fc[[1]][fc[[1]] < 18] = NA
+fc[[1]][fc[[1]] == 0] = NA # reset to 1 afterwards
+fc[[1]][fc[[1]] < 18] = NA # resete to 1 afterwards
 fc[[1]] = as.integer(fc[[1]] + 2000)
+fc[[1]][is.na(fc[[1]])] = 1
 
 # resample to ndvi by nearest neighbour
 fc = stars::st_warp(src = fc, dest = ndvi, method = "near")
