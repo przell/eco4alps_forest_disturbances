@@ -61,6 +61,8 @@ library(rmarkdown)
 pth_res = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/03_results/bfast"
 fls_brks = list.files(pth_res, pattern = "brks_", full.names = TRUE)
 
+pth_report = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/03_results/acc_reports/"
+
 # magnitude and valid obs not analysed so far
 # pth_magn = paste0(pth_res, "magn.tif")
 # pth_val_obs = paste0(pth_res, "val_obs.tif")
@@ -225,7 +227,6 @@ names(meta) = names(lst_anal_wind)
 lst_anal_wind = Map(c, lst_anal_wind, meta)
 
 # save the list elements to rds that can be loaded by markdown
-pth_report = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/03_results/acc_reports/"
 lapply(names(lst_anal_wind), function(x){
   saveRDS(object = lst_anal_wind[[x]], 
           file = paste0(pth_report, "acc_event_", tools::file_path_sans_ext(x), ".RDS"))
@@ -275,7 +276,6 @@ names(meta) = names(lst_anal)
 lst_anal = Map(c, lst_anal, meta)
 
 # save the list elements to rds that can be loaded by markdown
-pth_report = "/mnt/CEPH_PROJECTS/ECO4Alps/Forest_Disturbances/03_results/acc_reports/"
 lapply(names(lst_anal), function(x){
   saveRDS(object = lst_anal[[x]], 
           file = paste0(pth_report, "acc_noevent_", tools::file_path_sans_ext(x), ".RDS"))
